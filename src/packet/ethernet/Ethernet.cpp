@@ -1,4 +1,7 @@
 #include "Ethernet.h"
+#include "arp/ARP.h"
+#include "commons/Constants.h"
+#include <iostream>
 
 namespace Ethernet
 {
@@ -29,5 +32,23 @@ namespace Ethernet
                       mac.bytes[0], mac.bytes[1], mac.bytes[2],
                       mac.bytes[3], mac.bytes[4], mac.bytes[5]);
         return std::string(buffer);
+    }
+
+    void handleARPPacket(const uint8_t *data, size_t length)
+    {
+        EthernetHeader ethHeader;
+        if(!parseEthernetHeader(data, length, ethHeader)) {
+            std::cerr << "Failed to parse Ethernet header" << std::endl;
+            return;
+        }
+        if(ethHeader.ethertype == static_cast<uint16_t>(Net::Ethernet::Type::ARP)) {
+            ARP::Message arpMessage;
+            if(!ARP::parse(data + sizeof(EthernetHeader), length - sizeof(EthernetHeader), arpMessage)) {
+                std::cerr << "Failed to parse ARP message" << std::endl;
+                return;
+            }
+
+            
+        }
     }
 }

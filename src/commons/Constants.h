@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <array>
 
 namespace Net {
 
@@ -27,4 +28,15 @@ namespace Net {
         constexpr uint8_t  PROTOCOL_LENGTH   = 4;
     }
 
+    namespace FIRST_INTERFACE {
+        // 8a:68:5f:c8:07:66
+        constexpr std::array<uint8_t, 6> MAC_ADDRESS = {0x8a, 0x68, 0x5f, 0xc8, 0x07, 0x66}; 
+        constexpr std::array<uint8_t, 4> IP_ADDRESS = {10, 0, 1, 1}; 
+    }
+
+    namespace SECOND_INTERFACE {
+        // f6:2c:3c:a7:15:81
+        constexpr std::array<uint8_t, 6> MAC_ADDRESS = {0xf6, 0x2c, 0x3c, 0xa7, 0x15, 0x81}; 
+        constexpr std::array<uint8_t, 4> IP_ADDRESS = {10, 0, 2, 1}; 
+    }
 }
