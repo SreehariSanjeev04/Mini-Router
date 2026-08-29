@@ -25,6 +25,43 @@ namespace Ethernet
         return true;
     }
 
+    /**
+     * Serializes an Ethernet header into the given buffer.
+     * @param header The Ethernet header to serialize.
+     * @param buffer Pointer to the buffer where the serialized header will be stored.
+     * @param bufferSize Size of the buffer.
+     * @return True if serialization was successful, false otherwise.
+     */
+    bool serialize(const EthernetHeader& header, uint8_t* buffer, size_t bufferSize)
+    {
+        if (bufferSize < sizeof(EthernetHeader))
+        {
+            return false;
+        }
+
+        size_t offset = 0;
+        std::memcpy(buffer + offset, &header.destination, sizeof(MacAddress));
+        offset += sizeof(MacAddress);
+        std::memcpy(buffer + offset, &header.source, sizeof(MacAddress));
+        offset += sizeof(MacAddress);
+        uint16_t rawEtherType = htons(header.ethertype);
+        std::memcpy(buffer + offset, &rawEtherType, sizeof(rawEtherType));
+        return true;
+    }
+
+    /**
+     * Prepends the Ethernet header onto a payload held in the given frame buffer.
+     * @param buffer Frame buffer containing the payload; must have room for sizeof(EthernetHeader) additional bytes.
+     * @param bufferSize Size of the payload in bytes.
+     * @param header The Ethernet header to add.
+     * @return True if the header was added, false otherwise.
+     */
+    bool addEthernetHeader(uint8_t* buffer, size_t bufferSize, const EthernetHeader& header)
+    {
+        std::memmove(buffer + sizeof(EthernetHeader), buffer, bufferSize);
+        return serialize(header, buffer, bufferSize + sizeof(EthernetHeader));
+    }
+
     std::string getMacAddressString(const MacAddress &mac)
     {
         char buffer[18];
@@ -32,23 +69,5 @@ namespace Ethernet
                       mac.bytes[0], mac.bytes[1], mac.bytes[2],
                       mac.bytes[3], mac.bytes[4], mac.bytes[5]);
         return std::string(buffer);
-    }
-
-    void handleARPPacket(const uint8_t *data, size_t length)
-    {
-        EthernetHeader ethHeader;
-        if(!parseEthernetHeader(data, length, ethHeader)) {
-            std::cerr << "Failed to parse Ethernet header" << std::endl;
-            return;
-        }
-        if(ethHeader.ethertype == static_cast<uint16_t>(Net::Ethernet::Type::ARP)) {
-            ARP::Message arpMessage;
-            if(!ARP::parse(data + sizeof(EthernetHeader), length - sizeof(EthernetHeader), arpMessage)) {
-                std::cerr << "Failed to parse ARP message" << std::endl;
-                return;
-            }
-
-            
-        }
     }
 }

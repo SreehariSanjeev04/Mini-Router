@@ -2,7 +2,6 @@
 #include "commons/Constants.h"
 #include <arpa/inet.h>
 #include <cstring>
-#include <iostream>
 
 namespace ARP {
 
@@ -147,45 +146,5 @@ namespace ARP {
         reply.target_ip = message.sender_ip;
 
         return reply;
-    }
-
-    /**
-     * Handles an incoming ARP packet. It parses the packet, updates the ARP cache, and generates a reply if necessary.
-     * @param data The raw packet data.
-     * @param length The length of the packet data.
-     * @param cache The ARP cache to update.
-     * @param localMac The MAC address of the local interface.
-     * @param localIp The IP address of the local interface.
-     * @param responseBuffer A buffer to store the generated ARP reply, if any.
-     * @param responseBufferSize The size of the response buffer.
-     * @param responseSize The size of the generated response, if any.
-     * @return True if a reply was generated, false otherwise.
-     */
-    bool handleARPPacket(
-        const uint8_t *data,
-        size_t length,
-        Cache &cache,
-        const std::array<uint8_t, 6> &localMac,
-        const std::array<uint8_t, 4> &localIp,
-        uint8_t *responseBuffer,
-        size_t responseBufferSize
-    ) {
-        Message message;
-        if (!parse(data, length, message)) {
-            std::cerr << "Failed to parse ARP message" << std::endl;
-            return false;
-        }
-
-        cache.put(message.sender_ip, message.sender_mac);
-
-        if (isRequest(message) && message.target_ip == localIp) {
-            Message reply = createReply(message, localMac, localIp);
-            if (!serialize(reply, responseBuffer, responseBufferSize)) {
-                std::cerr << "Failed to serialize ARP reply" << std::endl;
-                return false;
-            }
-            return true;
-        }
-        return false;
     }
 }

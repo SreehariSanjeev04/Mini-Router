@@ -3,8 +3,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <map>
-#include <optional>
 
 namespace ARP {
 
@@ -20,19 +18,6 @@ struct Message {
     std::array<uint8_t, 4> target_ip;
 };
 
-class Cache {
-private:
-    std::map<std::array<uint8_t, 4>, std::array<uint8_t, 6>> cache;
-
-public:
-    Cache() = default;
-
-    void put(const std::array<uint8_t, 4>& ip, const std::array<uint8_t, 6>& mac);
-    std::optional<std::array<uint8_t, 6>> get(const std::array<uint8_t, 4>& ip) const;
-    bool contains(const std::array<uint8_t, 4>& ip) const;
-    void print() const;
-};
-
 bool parse(const uint8_t* data, size_t length, Message& message);
 bool isRequest(const Message& message);
 bool isReply(const Message& message);
@@ -45,15 +30,5 @@ Message createReply(
 );
 
 bool serialize(const Message& message, uint8_t* buffer, size_t bufferSize);
-
-bool handleARPPacket(
-    const uint8_t* data, 
-    size_t length, 
-    Cache& cache,
-    const std::array<uint8_t, 6>& localMac,
-    const std::array<uint8_t, 4>& localIp,
-    uint8_t* responseBuffer,
-    size_t responseBufferSize
-);
 
 } // namespace ARP

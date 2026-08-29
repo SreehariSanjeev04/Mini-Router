@@ -21,5 +21,7 @@ namespace Ethernet
     };
 
     bool parseEthernetHeader(const uint8_t* data, size_t length, EthernetHeader& header);
+    bool serialize(const EthernetHeader& header, uint8_t* buffer, size_t bufferSize);
+    bool addEthernetHeader(uint8_t* buffer, size_t bufferSize, const EthernetHeader& header);
     std::string getMacAddressString(const MacAddress& mac);
 }
