@@ -13,7 +13,8 @@ public:
     ArpHandler(
         ArpCache& cache,
         InterfaceManager& interfaces,
-        RawSocket& io);
+        RawSocket& io,
+        bool enableProxyARP = true);
 
     bool handleARPPacket(
         const uint8_t* data,
@@ -25,4 +26,5 @@ private:
     ArpCache& cache_;
     InterfaceManager& interfaces_;
     RawSocket& io_;
+    bool enableProxyARP_ = true;
 };

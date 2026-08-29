@@ -17,4 +17,5 @@ private:
     InterfaceManager interfaces_;
     ArpCache arpCache_;
     ArpHandler arpHandler_;
+    bool enableProxyArp_ = true;
 };

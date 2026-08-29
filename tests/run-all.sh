@@ -2,6 +2,11 @@
 #
 # Aggregate test runner for the mini-router.
 #
+# Structure:
+#   tests/run-all.sh          this runner (discover + summarize)
+#   tests/lib/common.sh       shared helpers (topology helpers, raw ARP probe)
+#   tests/test-*.sh           one integration test per file (any*'s feature)
+#
 # Discovers every tests/test-*.sh script, runs it, classifies the result, and
 # prints a colored Passed / Failed / Skipped summary. A test exits 0 on pass,
 # 1 on failure (logs printed), and 2 when it was skipped (e.g. needs root).

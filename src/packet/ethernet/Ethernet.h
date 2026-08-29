@@ -1,4 +1,5 @@
 #pragma once
+#pragma pack(push, 1)
 
 #include <cstdint>
 #include <cstring>
@@ -25,3 +26,5 @@ namespace Ethernet
     bool addEthernetHeader(uint8_t* buffer, size_t bufferSize, const EthernetHeader& header);
     std::string getMacAddressString(const MacAddress& mac);
 }
+
+#pragma pack(pop)

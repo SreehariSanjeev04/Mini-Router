@@ -1,4 +1,5 @@
 #pragma once
+#pragma pack(push, 1)
 
 #include <array>
 #include <cstddef>
@@ -32,3 +33,5 @@ Message createReply(
 bool serialize(const Message& message, uint8_t* buffer, size_t bufferSize);
 
 } // namespace ARP
+
+#pragma pack(pop)

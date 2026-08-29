@@ -17,12 +17,13 @@
  * @param io The raw socket used for network I/O.
  */
 ArpHandler::ArpHandler(
-    ArpCache& cache,
-    InterfaceManager& interfaces,
-    RawSocket& io)
+    ArpCache &cache,
+    InterfaceManager &interfaces,
+    RawSocket &io, bool enableProxyARP)
     : cache_(cache),
       interfaces_(interfaces),
-      io_(io)
+      io_(io),
+      enableProxyARP_(enableProxyARP)
 {
 }
 
@@ -37,9 +38,9 @@ ArpHandler::ArpHandler(
  * @return True if a reply was generated and sent, false otherwise.
  */
 bool ArpHandler::handleARPPacket(
-    const uint8_t* data,
+    const uint8_t *data,
     size_t length,
-    uint8_t* responseBuffer,
+    uint8_t *responseBuffer,
     size_t responseBufferSize)
 {
     if (length < sizeof(Ethernet::EthernetHeader))
@@ -56,16 +57,56 @@ bool ArpHandler::handleARPPacket(
 
     cache_.put(message.sender_ip, message.sender_mac);
 
-    if (ARP::isRequest(message) && interfaces_.isRouterIp(message.target_ip))
+    if (ARP::isRequest(message))
     {
-        std::array<uint8_t, 6> localMac;
-        if (interfaces_.getLocalMac(message.target_ip, localMac))
+
+        if (interfaces_.isRouterIp(message.target_ip))
         {
-            ARP::Message reply = ARP::createReply(message, localMac, message.target_ip);
+            std::array<uint8_t, 6> localMac;
+            if (interfaces_.getLocalMac(message.target_ip, localMac))
+            {
+                ARP::Message reply = ARP::createReply(message, localMac, message.target_ip);
+
+                Ethernet::EthernetHeader ethHeader;
+                std::memcpy(ethHeader.destination.bytes, message.sender_mac.data(), sizeof(ethHeader.destination.bytes));
+                std::memcpy(ethHeader.source.bytes, localMac.data(), sizeof(ethHeader.source.bytes));
+                ethHeader.ethertype = static_cast<uint16_t>(Net::Ethernet::Type::ARP);
+
+                if (!ARP::serialize(reply, responseBuffer, responseBufferSize))
+                {
+                    std::cerr << "Failed to serialize ARP reply" << std::endl;
+                    return false;
+                }
+
+                if (!Ethernet::addEthernetHeader(responseBuffer, sizeof(ARP::Message), ethHeader))
+                {
+                    std::cerr << "Failed to add Ethernet header to ARP reply" << std::endl;
+                    return false;
+                }
+
+                size_t frameSize = sizeof(Ethernet::EthernetHeader) + sizeof(ARP::Message);
+                if (io_.send(responseBuffer, frameSize) < 0)
+                {
+                    std::cerr << "Failed to send ARP reply" << std::endl;
+                    return false;
+                }
+                // debug output
+                std::cout << "Sent ARP reply to " << (int)message.sender_ip[0] << "." << (int)message.sender_ip[1] << "." << (int)message.sender_ip[2] << "." << (int)message.sender_ip[3] << std::endl;
+                return true;
+            }
+        } else if (enableProxyARP_) {
+
+            auto localMac = cache_.get(message.target_ip);
+            if (!localMac.has_value()) {
+                std::cerr << "Proxy ARP: No MAC found for target IP " << (int)message.target_ip[0] << "." << (int)message.target_ip[1] << "." << (int)message.target_ip[2] << "." << (int)message.target_ip[3] << std::endl;
+                return false;
+            }
+
+            ARP::Message reply = ARP::createReply(message, *localMac, message.target_ip);
 
             Ethernet::EthernetHeader ethHeader;
             std::memcpy(ethHeader.destination.bytes, message.sender_mac.data(), sizeof(ethHeader.destination.bytes));
-            std::memcpy(ethHeader.source.bytes, localMac.data(), sizeof(ethHeader.source.bytes));
+            std::memcpy(ethHeader.source.bytes, localMac->data(), sizeof(ethHeader.source.bytes));
             ethHeader.ethertype = static_cast<uint16_t>(Net::Ethernet::Type::ARP);
 
             if (!ARP::serialize(reply, responseBuffer, responseBufferSize))
@@ -83,12 +124,9 @@ bool ArpHandler::handleARPPacket(
             size_t frameSize = sizeof(Ethernet::EthernetHeader) + sizeof(ARP::Message);
             if (io_.send(responseBuffer, frameSize) < 0)
             {
-                std::cerr << "Failed to send ARP reply" << std::endl;
+                std::cerr << "Failed to send ARP reply" << std::endl;  
                 return false;
             }
-            // Debug output
-            std::cout << "Sent ARP reply to " << (int)message.sender_ip[0] << "." << (int)message.sender_ip[1] << "." << (int)message.sender_ip[2] << "." << (int)message.sender_ip[3] << std::endl;
-            return true;
         }
     }
     return false;
