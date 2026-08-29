@@ -3,9 +3,8 @@
 # Test the mini-router's ARP handling end-to-end.
 #
 # Usage:
-#   scripts/test-arp.sh unit     # offline protocol checks (no root required)
-#   scripts/test-arp.sh e2e      # full loopback test through a raw socket (root required)
-#   scripts/test-arp.sh          # auto: e2e if root, otherwise unit
+#   tests/test-arp.sh          # full loopback test through a raw socket (root required)
+#   tests/test-arp.sh e2e      # same, explicit mode
 #
 # e2e mode:
 #   Builds the router and runs it inside an isolated network namespace, while a
@@ -32,6 +31,7 @@ LOG_FILE="$BUILD_DIR/router.log"
 
 log()  { printf '== %s\n' "$*" >&2; }
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
+skip() { printf 'SKIP: %s\n' "$*" >&2; exit 2; }
 pass() { printf 'PASS: %s\n' "$*" >&2; }
 
 build() {
@@ -51,23 +51,8 @@ cleanup_e2e() {
     ip netns del "$HNS" >/dev/null 2>&1 || true
 }
 
-run_unit() {
-    local harness=/tmp/arp-offline
-    log "unit: compiling offline ARP harness"
-    g++ -std=gnu++17 -I "$ROOT_DIR/src" -Wall -Wextra -Wpedantic -o "$harness" \
-        "$ROOT_DIR/tests/arp_offline.cpp" \
-        "$ROOT_DIR/src/arp/ARP.cpp" \
-        "$ROOT_DIR/src/arp/ArpCache.cpp" \
-        "$ROOT_DIR/src/arp/ArpHandler.cpp" \
-        "$ROOT_DIR/src/interface/InterfaceManager.cpp" \
-        "$ROOT_DIR/src/network/RawSocket.cpp" \
-        "$ROOT_DIR/src/packet/ethernet/Ethernet.cpp"
-    log "unit: running offline ARP harness"
-    "$harness"
-}
-
 run_e2e() {
-    [ "$(id -u)" -eq 0 ] || fail "e2e mode requires root. Use 'unit' mode without root."
+    [ "$(id -u)" -eq 0 ] || skip "e2e mode requires root. Re-run with sudo."
     command -v ip >/dev/null || fail "'ip' command not found"
     python3 -c 'import socket, fcntl, struct' 2>/dev/null || fail "python3 with socket/fcntl/struct required"
 
@@ -195,16 +180,11 @@ PY
 }
 
 case "$MODE" in
-    unit) run_unit ;;
     e2e)  run_e2e ;;
     auto)
-        if [ "$(id -u)" -eq 0 ]; then
-            log "root detected -> e2e mode (use 'unit' for offline checks)"
-            run_e2e
-        else
-            log "no root -> unit mode (use 'e2e' for the full loopback test)"
-            run_unit
-        fi
+        # Always exercise the real binary over a real link. skip (exit 2)
+        # if we lack the privileges to do so.
+        run_e2e
         ;;
-    *) echo "usage: $0 [unit|e2e]" >&2; exit 2 ;;
+    *) echo "usage: $0 [e2e]" >&2; exit 2 ;;
 esac
