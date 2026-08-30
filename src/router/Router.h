@@ -5,6 +5,10 @@
 #include "interface/InterfaceManager.h"
 #include "network/RawSocket.h"
 
+#include <memory>
+#include <utility>
+#include <vector>
+
 class Router
 {
 public:
@@ -13,9 +17,8 @@ public:
     void run();
 
 private:
-    RawSocket rawSocket_;
+    std::vector<std::unique_ptr<RawSocket>> rawSockets_;
     InterfaceManager interfaces_;
     ArpCache arpCache_;
     ArpHandler arpHandler_;
-    bool enableProxyArp_ = true;
 };

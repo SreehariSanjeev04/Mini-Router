@@ -7,18 +7,19 @@
 class RawSocket
 {
 public:
-    explicit RawSocket(int protocol);
+    RawSocket(int protocol, int interfaceIndex);
     ~RawSocket();
 
     RawSocket(const RawSocket&) = delete;
     RawSocket& operator=(const RawSocket&) = delete;
 
     int descriptor() const;
+    int interfaceIndex() const;
     ssize_t receive(void* buffer, size_t length);
-
     ssize_t send(const void* buffer, size_t length);
 
 private:
     int fd_;
-    int lastInterfaceIndex_;
+    int protocol_;
+    int interfaceIndex_;
 };

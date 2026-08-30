@@ -62,15 +62,23 @@ bool InterfaceManager::getInterfaceDetails(
 
 /**
  * Registers a local interface in the interface map.
+ * @param interfaceName The name of the local interface.
+ * @param ifindex The index of the local interface.
  * @param macAddress The MAC address of the local interface.
  * @param ipAddress The IP address of the local interface.
  * @return True if the interface was added, false otherwise.
  */
 bool InterfaceManager::addLocalInterface(
+    const std::string& interfaceName,
+    int ifindex,
     const std::array<uint8_t, 6>& macAddress,
     const std::array<uint8_t, 4>& ipAddress)
 {
-    return localInterfaces_.emplace(ipAddress, macAddress).second;
+    if (ifindex <= 0)
+    {
+        return false;
+    }
+    return localInterfaces_.emplace(ifindex, InterfaceInfo{macAddress, ipAddress, interfaceName}).second;
 }
 
 /**
@@ -80,7 +88,14 @@ bool InterfaceManager::addLocalInterface(
  */
 bool InterfaceManager::isRouterIp(const std::array<uint8_t, 4>& ip) const
 {
-    return localInterfaces_.find(ip) != localInterfaces_.end();
+    for (const auto& [ifindex, info] : localInterfaces_)
+    {
+        if (info.ip == ip)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**
@@ -93,13 +108,15 @@ bool InterfaceManager::getLocalMac(
     const std::array<uint8_t, 4>& ip,
     std::array<uint8_t, 6>& macAddress) const
 {
-    auto it = localInterfaces_.find(ip);
-    if (it == localInterfaces_.end())
+    for (const auto& [ifindex, info] : localInterfaces_)
     {
-        return false;
+        if (info.ip == ip)
+        {
+            macAddress = info.mac;
+            return true;
+        }
     }
-    macAddress = it->second;
-    return true;
+    return false;
 }
 
 /**
@@ -108,18 +125,33 @@ bool InterfaceManager::getLocalMac(
 void InterfaceManager::printLocalInterfaces()
 {
     std::cout << "--- Local Interfaces (" << localInterfaces_.size() << " entries) ---\n";
-    for (const auto& [ip, mac] : localInterfaces_)
+    for (const auto& [ifindex, info] : localInterfaces_)
     {
-        std::cout << (int)ip[0] << "." << (int)ip[1] << "." << (int)ip[2] << "." << (int)ip[3] << " -> ";
+        std::cout << info.name << " (index " << ifindex << ") ";
+        std::cout << (int)info.ip[0] << "." << (int)info.ip[1] << "." << (int)info.ip[2] << "." << (int)info.ip[3] << " -> ";
         for (size_t i = 0; i < 6; ++i)
         {
-            std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)mac[i] << (i < 5 ? ":" : "");
+            std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)info.mac[i] << (i < 5 ? ":" : "");
         }
         std::cout << std::dec << "\n";
     }
     std::cout << "--- End of Local Interfaces ---\n\n";
 }
 
+/**
+ * Returns the indexes of all local interfaces.
+ * @return A vector containing the index of each local interface.
+ */
+std::vector<int> InterfaceManager::getLocalInterfaceIndexes() const
+{
+    std::vector<int> indexes;
+    indexes.reserve(localInterfaces_.size());
+    for (const auto& [ifindex, info] : localInterfaces_)
+    {
+        indexes.push_back(ifindex);
+    }
+    return indexes;
+}
 
 /**
  * Retrieves the list of local interfaces and their details, populating the localInterfaces_ map.
@@ -140,14 +172,19 @@ bool InterfaceManager::getLocalInterfaces() {
     const struct ifreq* const end = it + (ifc.ifc_len / sizeof(struct ifreq));
 
     for (; it != end; ++it) {
+        std::string name(it->ifr_name);
+        int ifindex = if_nametoindex(name.c_str());
+        if (ifindex == 0) {
+            continue;
+        }
+
         std::array<uint8_t, 6> macAddress;
         std::array<uint8_t, 4> ipAddress;
 
         if (getInterfaceDetails(it->ifr_name, macAddress, ipAddress)) {
-            addLocalInterface(macAddress, ipAddress);
+            addLocalInterface(name, ifindex, macAddress, ipAddress);
         }
     }
 
     return true;
 }
-

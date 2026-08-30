@@ -6,13 +6,31 @@
 #include <net/ethernet.h>
 
 /**
- * Creates a raw socket for the given protocol.
+ * Creates a raw socket for the given protocol and binds it to the given interface.
  * @param protocol The protocol used for filtering received frames (e.g., ETH_P_ALL).
+ * @param interfaceIndex The index of the interface this socket is bound to.
  */
-RawSocket::RawSocket(int protocol)
+RawSocket::RawSocket(int protocol, int interfaceIndex)
     : fd_(socket(AF_PACKET, SOCK_RAW, htons(protocol))),
-      lastInterfaceIndex_(0)
+      protocol_(protocol),
+      interfaceIndex_(interfaceIndex)
 {
+    if (fd_ < 0)
+    {
+        return;
+    }
+
+    struct sockaddr_ll addr;
+    std::memset(&addr, 0, sizeof(addr));
+    addr.sll_family = AF_PACKET;
+    addr.sll_protocol = htons(protocol);
+    addr.sll_ifindex = interfaceIndex; // binding the socket to the specified interface
+
+    if (bind(fd_, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == -1)
+    {
+        close(fd_);
+        fd_ = -1;
+    }
 }
 
 /**
@@ -36,26 +54,27 @@ int RawSocket::descriptor() const
 }
 
 /**
- * Receives data from the raw socket and records the interface it arrived on.
+ * Returns the index of the interface this socket is bound to.
+ * @return The interface index.
+ */
+int RawSocket::interfaceIndex() const
+{
+    return interfaceIndex_;
+}
+
+/**
+ * Receives data from the raw socket.
  * @param buffer Pointer to the buffer where the received data will be stored.
  * @param length Size of the buffer.
  * @return The number of bytes received, or -1 on failure.
  */
 ssize_t RawSocket::receive(void* buffer, size_t length)
 {
-    struct sockaddr_ll addr;
-    socklen_t addrLen = sizeof(addr);
-
-    ssize_t numBytes = recvfrom(fd_, buffer, length, 0, reinterpret_cast<struct sockaddr*>(&addr), &addrLen);
-    if (numBytes >= 0)
-    {
-        lastInterfaceIndex_ = addr.sll_ifindex;
-    }
-    return numBytes;
+    return recvfrom(fd_, buffer, length, 0, nullptr, nullptr);
 }
 
 /**
- * Sends data through the raw socket on the interface frames were last received from.
+ * Sends data through the raw socket on the interface it is bound to.
  * @param buffer Pointer to the buffer containing the data to send.
  * @param length Size of the data to send.
  * @return The number of bytes sent, or -1 on failure.
@@ -65,8 +84,8 @@ ssize_t RawSocket::send(const void* buffer, size_t length)
     struct sockaddr_ll addr;
     std::memset(&addr, 0, sizeof(addr));
     addr.sll_family = AF_PACKET;
-    addr.sll_protocol = htons(ETH_P_ARP);
-    addr.sll_ifindex = lastInterfaceIndex_;
+    addr.sll_protocol = htons(protocol_);
+    addr.sll_ifindex = interfaceIndex_;
 
     return sendto(fd_, buffer, length, 0, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
-}   
+}

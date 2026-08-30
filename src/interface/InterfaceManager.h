@@ -2,6 +2,8 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <string>
+#include <vector>
 
 class InterfaceManager
 {
@@ -18,6 +20,8 @@ public:
         std::array<uint8_t, 4>& ipAddress);
 
     bool addLocalInterface(
+        const std::string& interfaceName,
+        int ifindex,
         const std::array<uint8_t, 6>& macAddress,
         const std::array<uint8_t, 4>& ipAddress);
 
@@ -31,7 +35,16 @@ public:
 
     void printLocalInterfaces();
 
+    std::vector<int> getLocalInterfaceIndexes() const;
+
 private:
+    struct InterfaceInfo
+    {
+        std::array<uint8_t, 6> mac;
+        std::array<uint8_t, 4> ip;
+        std::string name;
+    };
+
     int ioctlFd_;
-    std::map<std::array<uint8_t, 4>, std::array<uint8_t, 6>> localInterfaces_;
+    std::map<int, InterfaceInfo> localInterfaces_;
 };

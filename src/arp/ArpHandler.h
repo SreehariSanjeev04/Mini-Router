@@ -12,19 +12,16 @@ class ArpHandler
 public:
     ArpHandler(
         ArpCache& cache,
-        InterfaceManager& interfaces,
-        RawSocket& io,
-        bool enableProxyARP = true);
+        InterfaceManager& interfaces);
 
     bool handleARPPacket(
         const uint8_t* data,
         size_t length,
         uint8_t* responseBuffer,
-        size_t responseBufferSize);
+        size_t responseBufferSize,
+        RawSocket& io);
 
 private:
     ArpCache& cache_;
     InterfaceManager& interfaces_;
-    RawSocket& io_;
-    bool enableProxyARP_ = true;
 };
