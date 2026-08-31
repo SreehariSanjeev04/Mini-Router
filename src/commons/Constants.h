@@ -25,4 +25,12 @@ namespace Net {
         constexpr uint8_t  PROTOCOL_LENGTH   = 4;
     }
     constexpr int BUFFER_SIZE = 1518; // practial maximum size of an Ethernet frame
+
+    namespace IPv4 {
+        enum class Protocol : uint8_t {
+            ICMP = 1,
+            TCP  = 6,
+            UDP  = 17
+        };
+    }
 }

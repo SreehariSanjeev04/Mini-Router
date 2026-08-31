@@ -2,6 +2,7 @@
 
 #include "commons/Constants.h"
 #include "packet/ethernet/Ethernet.h"
+#include "packet/ipv4/IPv4.h"
 
 #include <cerrno>
 #include <cstring>
@@ -102,10 +103,20 @@ void Router::run()
 
                 if (ethHeader.ethertype == static_cast<uint16_t>(Net::Ethernet::Type::ARP))
                 {
+                    // Handle ARP packet
                     std::cout << "Received ARP packet" << std::endl;
 
                     uint8_t responseBuffer[Net::BUFFER_SIZE];
                     arpHandler_.handleARPPacket(buffer, numBytes, responseBuffer, sizeof(responseBuffer), socket);
+                }
+                else if(ethHeader.ethertype == static_cast<uint16_t>(Net::Ethernet::Type::IPv4))
+                {
+                    // Handle IPv4 packet
+                    std::cout << "Received IPv4 packet" << std::endl;
+                    IPv4Packet ipv4Packet;
+                    if(IPv4::parse(buffer + sizeof(Ethernet::EthernetHeader), numBytes - sizeof(Ethernet::EthernetHeader), ipv4Packet)) {
+                        IPv4::printPacket(ipv4Packet);
+                    }
                 }
                 else
                 {
