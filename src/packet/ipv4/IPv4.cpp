@@ -7,6 +7,13 @@
 
 namespace IPv4
 {
+    /**
+     * Parses an IPv4 packet from a byte buffer.
+     * @param data Pointer to the byte buffer containing the IPv4 packet.
+     * @param length Length of the byte buffer.
+     * @param packet Reference to an IPv4Packet structure where the parsed data will be stored
+     * @return True if parsing was successful, false otherwise.
+     */
     bool parse(
         const uint8_t *data,
         size_t length,
@@ -85,6 +92,13 @@ namespace IPv4
         return true;
     }
 
+    /**
+     * Serializes an IPv4Packet structure into a byte buffer.
+     * @param packet The IPv4Packet structure to serialize.
+     * @param buffer The byte buffer to write the serialized data into.
+     * @param bufferSize The size of the byte buffer.
+     * @return True if serialization was successful, false otherwise.
+     */
     bool serialize(
         const struct IPv4Packet &packet,
         uint8_t *buffer,
@@ -140,6 +154,12 @@ namespace IPv4
         return true;
     }
 
+    /**
+     * Calculates the checksum for the IPv4 header.
+     * @param data Pointer to the IPv4 header data.
+     * @param headerLength Length of the IPv4 header in bytes.
+     * @return The calculated checksum value.
+     */
     uint16_t calculateChecksum(
         const uint8_t *data,
         size_t headerLength)
@@ -163,6 +183,12 @@ namespace IPv4
         return static_cast<uint16_t>(~sum);
     }
 
+    /**
+     * Verifies the checksum of the IPv4 header.
+     * @param data Pointer to the IPv4 header data.
+     * @param headerLength Length of the IPv4 header in bytes.
+     * @return True if the checksum is valid, false otherwise.
+     */
     bool verifyChecksum(
         const uint8_t *data,
         size_t headerLength)
@@ -172,12 +198,12 @@ namespace IPv4
             return false;
         }
 
-        uint16_t receivedChecksum;
-        std::memcpy(&receivedChecksum, data + 10, sizeof(receivedChecksum));
-        receivedChecksum = ntohs(receivedChecksum);
-
         uint16_t calculatedChecksum = calculateChecksum(data, headerLength);
-        return receivedChecksum == calculatedChecksum;
+        if (calculatedChecksum == 0x0000)
+        {
+            return true;
+        }
+        return false;
     }
 
     // not required, just for debugging purposes

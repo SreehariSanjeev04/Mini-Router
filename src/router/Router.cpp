@@ -55,7 +55,7 @@ void Router::run()
 
     std::vector<pollfd> fds;
     fds.reserve(rawSockets_.size());
-    for (const auto& socket : rawSockets_)
+    for (const auto &socket : rawSockets_)
     {
         fds.push_back(pollfd{socket->descriptor(), POLLIN, 0});
     }
@@ -82,7 +82,7 @@ void Router::run()
                 continue;
             }
 
-            RawSocket& socket = *rawSockets_[i];
+            RawSocket &socket = *rawSockets_[i];
 
             ssize_t numBytes = socket.receive(buffer, sizeof(buffer));
             if (numBytes < 0)
@@ -109,12 +109,14 @@ void Router::run()
                     uint8_t responseBuffer[Net::BUFFER_SIZE];
                     arpHandler_.handleARPPacket(buffer, numBytes, responseBuffer, sizeof(responseBuffer), socket);
                 }
-                else if(ethHeader.ethertype == static_cast<uint16_t>(Net::Ethernet::Type::IPv4))
+                else if (ethHeader.ethertype == static_cast<uint16_t>(Net::Ethernet::Type::IPv4))
                 {
                     // Handle IPv4 packet
                     std::cout << "Received IPv4 packet" << std::endl;
                     IPv4Packet ipv4Packet;
-                    if(IPv4::parse(buffer + sizeof(Ethernet::EthernetHeader), numBytes - sizeof(Ethernet::EthernetHeader), ipv4Packet)) {
+                    if (IPv4::parse(buffer + sizeof(Ethernet::EthernetHeader), numBytes - sizeof(Ethernet::EthernetHeader), ipv4Packet) &&
+                        IPv4::verifyChecksum(buffer + sizeof(Ethernet::EthernetHeader), ipv4Packet.headerLength * 4))
+                    {
                         IPv4::printPacket(ipv4Packet);
                     }
                 }
