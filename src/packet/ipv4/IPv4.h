@@ -19,6 +19,17 @@ namespace IPv4 {
         size_t headerLength
     );  
 
+    /**
+     * Recomputes and writes the header checksum after a field (e.g. TTL) has
+     * changed, aligning with serialize() + verifyChecksum.
+     * @param header Pointer to the IPv4 header bytes.
+     * @param headerLength Length of the IPv4 header in bytes.
+     */
+    void updateChecksum(
+        uint8_t* header,
+        size_t headerLength
+    );  
+
     bool serialize(
         const struct IPv4Packet& packet,
         uint8_t* buffer,

@@ -39,7 +39,9 @@ bool ArpHandler::handleARPPacket(
     size_t length,
     uint8_t *responseBuffer,
     size_t responseBufferSize,
-    RawSocket &io)
+    RawSocket &io,
+    std::array<uint8_t, 4> *senderIpOut,
+    std::array<uint8_t, 6> *senderMacOut)
 {
     if (length < sizeof(Ethernet::EthernetHeader))
     {
@@ -54,6 +56,16 @@ bool ArpHandler::handleARPPacket(
     }
 
     cache_.put(message.sender_ip, message.sender_mac);
+
+    // Expose the sender mapping so the caller can, e.g., flush queued forwards.
+    if (senderIpOut != nullptr)
+    {
+        *senderIpOut = message.sender_ip;
+    }
+    if (senderMacOut != nullptr)
+    {
+        *senderMacOut = message.sender_mac;
+    }
 
     if (ARP::isRequest(message))
     {
@@ -95,4 +107,59 @@ bool ArpHandler::handleARPPacket(
         }
     }
     return false;
+}
+
+bool ArpHandler::sendArpRequest(
+    const std::array<uint8_t, 4> &targetIp,
+    RawSocket &io)
+{
+    std::array<uint8_t, 6> localMac;
+    std::array<uint8_t, 4> localIp;
+    if (!interfaces_.getInterfaceByIndex(io.interfaceIndex(), localMac, localIp))
+    {
+        std::cerr << "Failed to find local interface information for request" << std::endl;
+        return false;
+    }
+
+    ARP::Message request;
+    request.hardware_type = Net::ARP::HARDWARE_ETHERNET;
+    request.protocol_type = static_cast<uint16_t>(Net::Ethernet::Type::IPv4);
+    request.hardware_size = Net::ARP::HARDWARE_LENGTH;
+    request.protocol_size = Net::ARP::PROTOCOL_LENGTH;
+    request.opcode = static_cast<uint16_t>(Net::ARP::Opcode::Request);
+    request.sender_mac = localMac;
+    request.sender_ip = localIp;
+    request.target_mac.fill(0);
+    request.target_ip = targetIp;
+
+    uint8_t frame[Net::BUFFER_SIZE];
+
+    if (!ARP::serialize(request, frame, sizeof(frame)))
+    {
+        std::cerr << "Failed to serialize ARP request" << std::endl;
+        return false;
+    }
+
+    Ethernet::EthernetHeader ethHeader;
+    std::memset(ethHeader.destination.bytes, 0xFF, sizeof(ethHeader.destination.bytes));
+    std::memcpy(ethHeader.source.bytes, localMac.data(), sizeof(ethHeader.source.bytes));
+    ethHeader.ethertype = static_cast<uint16_t>(Net::Ethernet::Type::ARP);
+
+    if (!Ethernet::addEthernetHeader(frame, sizeof(ARP::Message), ethHeader))
+    {
+        std::cerr << "Failed to add Ethernet header to ARP request" << std::endl;
+        return false;
+    }
+
+    size_t frameSize = sizeof(Ethernet::EthernetHeader) + sizeof(ARP::Message);
+    if (io.send(frame, frameSize) < 0)
+    {
+        std::cerr << "Failed to send ARP request" << std::endl;
+        return false;
+    }
+
+    std::cout << "Sent ARP request for "
+              << (int)targetIp[0] << "." << (int)targetIp[1] << "."
+              << (int)targetIp[2] << "." << (int)targetIp[3] << std::endl;
+    return true;
 }

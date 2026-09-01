@@ -107,10 +107,12 @@ create_topology() {
     ip -n "$H1NS" route add default via "$ROUTER_IP1" dev "$VETH_H1"
     ip -n "$H2NS" route add default via "$ROUTER_IP2" dev "$VETH_H2"
 
-    # enable kernel IP forwarding inside the router namespace so that, even
-    # without the mini-router, packets are routed end-to-end. The mini-router
-    # still observes every frame on its raw sockets.
-    ip netns exec "$RNS" sysctl -w net.ipv4.ip_forward=1 >/dev/null
+    # Kernel IP forwarding is DISABLED inside the router namespace so that only
+    # the mini-router forwards packets between host1 and host2. The kernel keeps
+    # answering ARP for the router's own IPs (required for the hosts' default
+    # gateways to resolve). To let the kernel do the routing instead, set
+    # KERNEL_FORWARD=1.
+    ip netns exec "$RNS" sysctl -w net.ipv4.ip_forward="${KERNEL_FORWARD:-0}" >/dev/null
 
     log "topology created"
     status
@@ -133,7 +135,10 @@ status() {
 
 # --- start the mini-router ------------------------------------------------
 start_router() {
-    [ -x "$BIN" ] || err "$BIN not built. Run: cmake -S . -B build && cmake --build build"
+    log "rebuilding router (cmake, $BUILD_DIR)"
+    cmake -S "$ROOT_DIR" -B "$BUILD_DIR" >/dev/null
+    cmake --build "$BUILD_DIR" -j >/dev/null
+    [ -x "$BIN" ] || err "$BIN not built. cmake produced no executable."
     kill -0 "$ROUTER_PID" 2>/dev/null && { log "router already running (pid $ROUTER_PID)"; return; }
     : > "$LOG_FILE"
     ip netns exec "$RNS" "$BIN" >"$LOG_FILE" 2>&1 &

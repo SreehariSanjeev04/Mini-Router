@@ -81,10 +81,10 @@ namespace IPv4
         packet.headerChecksum = ntohs(headerChecksum);
         offset += sizeof(headerChecksum);
 
-        std::memcpy(packet.sourceAddress.bytes, data + offset, sizeof(packet.sourceAddress.bytes));
+        std::memcpy(packet.sourceAddress.bytes.data(), data + offset, sizeof(packet.sourceAddress.bytes));
         offset += sizeof(packet.sourceAddress.bytes);
 
-        std::memcpy(packet.destinationAddress.bytes, data + offset, sizeof(packet.destinationAddress.bytes));
+        std::memcpy(packet.destinationAddress.bytes.data(), data + offset, sizeof(packet.destinationAddress.bytes));
         offset += sizeof(packet.destinationAddress.bytes);
 
         packet.payload = data + headerLengthBytes;
@@ -139,10 +139,10 @@ namespace IPv4
         std::memcpy(buffer + offset, &headerChecksumNetworkOrder, sizeof(headerChecksumNetworkOrder));
         offset += sizeof(headerChecksumNetworkOrder);
 
-        std::memcpy(buffer + offset, packet.sourceAddress.bytes, sizeof(packet.sourceAddress.bytes));
+        std::memcpy(buffer + offset, packet.sourceAddress.bytes.data(), sizeof(packet.sourceAddress.bytes));
         offset += sizeof(packet.sourceAddress.bytes);
 
-        std::memcpy(buffer + offset, packet.destinationAddress.bytes, sizeof(packet.destinationAddress.bytes));
+        std::memcpy(buffer + offset, packet.destinationAddress.bytes.data(), sizeof(packet.destinationAddress.bytes));
         offset += sizeof(packet.destinationAddress.bytes);
 
         if (packet.payload != nullptr && packet.payloadLength > 0)
@@ -204,6 +204,25 @@ namespace IPv4
             return true;
         }
         return false;
+    }
+
+    void updateChecksum(
+        uint8_t *header,
+        size_t headerLength)
+    {
+        if (header == nullptr || headerLength < 20)
+        {
+            return;
+        }
+
+        // Zero the checksum field (bytes 10-11) before recomputing.
+        header[10] = 0;
+        header[11] = 0;
+
+        uint16_t check = calculateChecksum(header, headerLength);
+        // Store in network byte order (big-endian) to match verification.
+        header[10] = static_cast<uint8_t>(check >> 8);
+        header[11] = static_cast<uint8_t>(check & 0xFF);
     }
 
     // not required, just for debugging purposes

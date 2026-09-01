@@ -2,17 +2,17 @@
 #pragma pack(push, 1)
 #include <cstdint>
 #include <cstring>
-
+#include <array>
 struct IPv4Address {
 
-    uint8_t bytes[4];
+    std::array<uint8_t, 4> bytes;
 
     bool operator==(const IPv4Address& other) const {
-        return std::memcmp(bytes, other.bytes, sizeof(bytes)) == 0;
+        return bytes == other.bytes;
     }
 
     bool operator!=(const IPv4Address& other) const {
-        return std::memcmp(bytes, other.bytes, sizeof(bytes)) != 0;
+        return bytes != other.bytes;
     }
 };
 
