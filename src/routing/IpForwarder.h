@@ -32,9 +32,8 @@ public:
     /**
      * Attempts to forward a received IPv4 packet toward its destination.
      * @param packet The parsed IPv4 packet (payload points into the RX buffer).
-     * @param inInterfaceIndex The index of the interface the packet arrived on.
      */
-    void forwardPacket(const IPv4Packet& packet, int inInterfaceIndex);
+    void forwardPacket(const IPv4Packet& packet);
 
     /**
      * Called when the ARP cache learns a new (ip -> mac) mapping. Flushes any

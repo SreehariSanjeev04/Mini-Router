@@ -28,10 +28,7 @@ class RoutingTable {
 public:
     void addRoute(const RouteEntry& route);
 
-    /**
-     * Finds the best matching route for the given destination IP.
-     * @return The most specific matching route, or std::nullopt if none match.
-     */
+
     std::optional<RouteEntry> findRoute(const std::array<uint8_t, 4>& destinationIp) const;
 
     bool isEmpty() const;

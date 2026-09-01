@@ -40,12 +40,9 @@ IpForwarder::IpForwarder(
  * either sent immediately (if the next-hop MAC is already cached) or queued while
  * a directed ARP request resolves the next-hop MAC.
  * @param packet The parsed IPv4 packet.
- * @param inInterfaceIndex The interface index the packet arrived on.
  */
-void IpForwarder::forwardPacket(const IPv4Packet& packet, int inInterfaceIndex)
+void IpForwarder::forwardPacket(const IPv4Packet& packet)
 {
-    static_cast<void>(inInterfaceIndex);
-
     std::array<uint8_t, 4> dest = packet.destinationAddress.bytes;
 
     if (packet.ttl <= 1)

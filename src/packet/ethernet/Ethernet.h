@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
-#include <stdexcept>
 #include <arpa/inet.h>
 
 namespace Ethernet

@@ -159,7 +159,7 @@ void Router::run()
                         }
                         else
                         {
-                            forwarder_.forwardPacket(ipv4Packet, socket.interfaceIndex());
+                            forwarder_.forwardPacket(ipv4Packet);
                         }
                     }
                     else

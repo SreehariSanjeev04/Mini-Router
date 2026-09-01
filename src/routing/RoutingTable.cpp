@@ -1,7 +1,6 @@
 #include "RoutingTable.h"
 
 #include <iostream>
-#include <algorithm>
 
 /**
  * Adds a route to the table.

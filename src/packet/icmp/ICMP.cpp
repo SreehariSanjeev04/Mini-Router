@@ -1,9 +1,7 @@
 #include "ICMP.h"
-#include "commons/Constants.h"
 
 #include <arpa/inet.h>
 #include <cstring>
-#include <iostream>
 
 namespace ICMP {
 

@@ -45,7 +45,6 @@ ROUTER_PID=""
 
 # --- helpers ------------------------------------------------------------
 log()  { printf '== %s\n' "$*" >&2; }
-warn() { printf '!! %s\n' "$*" >&2; }
 err()  { printf '!! %s\n' "$*" >&2; exit 1; }
 
 require_root() {
