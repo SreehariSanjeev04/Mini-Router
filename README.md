@@ -91,8 +91,7 @@ src/
 │   ├── ethernet/Ethernet.{h,cpp}
 │   ├── icmp/ICMP.{h,cpp}      # echo request parsing + reply construction
 │   └── ipv4/IPv4.{h,cpp}      # IPv4 header parse/serialize + checksums
-│   └── ipv4/IPv4Packet.h      # parsed IPv4 representation
-│   └── ipv4/IPv4Address.h     # 4-byte address type
+│   └── ipv4/IPv4Packet.h     # packed wire-format IPv4Header + IPv4Packet
 ├── router/
 │   └── Router.{h,cpp}         # composition root + poll/receive loop
 └── routing/

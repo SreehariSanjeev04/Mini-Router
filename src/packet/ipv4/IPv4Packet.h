@@ -1,27 +1,27 @@
 #pragma once
 
-#include "IPv4Address.h"
+#include <cstddef>
+#include <cstdint>
 
-struct IPv4Packet {
-    uint8_t version;
-    uint8_t headerLength;
-
+#pragma pack(push, 1)
+struct IPv4Header
+{
+    uint8_t versionAndIHL;
     uint8_t tos;
     uint16_t totalLength;
-
     uint16_t identification;
-
-    uint8_t flags;
-    uint16_t fragmentOffset;
-
+    uint16_t flagsAndFragmentOffset;
     uint8_t ttl;
     uint8_t protocol;
+    uint16_t checksum;
+    uint32_t source;
+    uint32_t destination;
+};
+#pragma pack(pop)
 
-    uint16_t headerChecksum;
-
-    IPv4Address sourceAddress;
-    IPv4Address destinationAddress;
-
+struct IPv4Packet
+{
+    IPv4Header header;
     const uint8_t* payload;
     size_t payloadLength;
 };

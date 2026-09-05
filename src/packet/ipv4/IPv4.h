@@ -1,5 +1,9 @@
 #pragma once
+
 #include "IPv4Packet.h"
+
+#include <array>
+#include <string>
 
 namespace IPv4 {
     
@@ -37,4 +41,20 @@ namespace IPv4 {
     );
 
     void printPacket(const struct IPv4Packet& packet);
+
+
+    /** @return The IPv4 header length in bytes (includes any options). */
+    uint8_t headerLengthBytes(const struct IPv4Packet& packet);
+
+    /** @return The total IP packet length in bytes (header + payload). */
+    uint16_t totalLength(const struct IPv4Packet& packet);
+
+    /** @return The source address as a 4-byte array. */
+    std::array<uint8_t, 4> sourceAddress(const struct IPv4Packet& packet);
+
+    /** @return The destination address as a 4-byte array. */
+    std::array<uint8_t, 4> destinationAddress(const struct IPv4Packet& packet);
+
+    /** @return A dotted-quad string for a 4-byte address. */
+    std::string ipToString(const std::array<uint8_t, 4>& address);
 }

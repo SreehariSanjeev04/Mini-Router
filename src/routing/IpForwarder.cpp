@@ -8,6 +8,7 @@
 #include "packet/ethernet/Ethernet.h"
 #include "packet/ipv4/IPv4.h"
 #include "routing/RoutingTable.h"
+#include "icmp/ICMP.h"
 
 #include <iostream>
 #include <cstring>
@@ -43,40 +44,44 @@ IpForwarder::IpForwarder(
  */
 void IpForwarder::forwardPacket(const IPv4Packet& packet)
 {
-    std::array<uint8_t, 4> dest = packet.destinationAddress.bytes;
+    std::array<uint8_t, 4> dest = IPv4::destinationAddress(packet);
 
-    if (packet.ttl <= 1)
+    if (packet.header.ttl <= 1)
     {
-        std::cout << "Drop IPv4: TTL expired for "
-                  << (int)dest[0] << "." << (int)dest[1] << "."
-                  << (int)dest[2] << "." << (int)dest[3] << std::endl;
+        std::cout << "Drop IPv4: TTL expired for " << IPv4::ipToString(dest) << std::endl;
         return;
     }
 
     auto route = routes_.findRoute(dest);
     if (!route)
     {
-        std::cout << "Drop IPv4: no route for "
-                  << (int)dest[0] << "." << (int)dest[1] << "."
-                  << (int)dest[2] << "." << (int)dest[3] << std::endl;
-        return;
+        std::cout << "Drop IPv4: no route for " << IPv4::ipToString(dest) << std::endl;
+        
+        // send icmp unreachable
+        const uint8_t headerLength = IPv4::headerLengthBytes(packet);
+        uint8_t* buffer;
+        if(!ICMP::createICMPErrorReply(packet, headerLength, static_cast<const uint8_t>(Net::ICMP::Code::DEST_UNREACHABLE), static_cast<const uint8_t>(Net::ICMP::Code::DEST_UNREACHABLE), buffer));
+
+        IPv4Packet newPacket;
+        
     }
 
+    // very doubtful for why there isConnected :(
     // For directly connected routes the next hop is on the same L2 segment, so
     // the ARP target is the final destination. Otherwise ARP for the gateway.
     std::array<uint8_t, 4> arpTarget = route->isConnected ? dest : route->nextHopIpAddress;
 
     // Build the outgoing packet with TTL decremented and checksum refreshed.
     IPv4Packet outgoing = packet;
-    outgoing.ttl -= 1;
+    outgoing.header.ttl -= 1;
 
-    std::vector<uint8_t> outgoingBytes(outgoing.totalLength);
+    std::vector<uint8_t> outgoingBytes(IPv4::totalLength(outgoing));
     if (!IPv4::serialize(outgoing, outgoingBytes.data(), outgoingBytes.size()))
     {
         std::cout << "Drop IPv4: failed to serialize outgoing packet" << std::endl;
         return;
     }
-    IPv4::updateChecksum(outgoingBytes.data(), outgoing.headerLength * 4);
+    IPv4::updateChecksum(outgoingBytes.data(), IPv4::headerLengthBytes(outgoing));
 
     int outIfindex = route->interfaceIndex;
 
@@ -84,9 +89,7 @@ void IpForwarder::forwardPacket(const IPv4Packet& packet)
     {
         if (sendPacket(outgoingBytes, *mac, outIfindex))
         {
-            std::cout << "Forwarded IPv4 packet to "
-                      << (int)dest[0] << "." << (int)dest[1] << "."
-                      << (int)dest[2] << "." << (int)dest[3]
+            std::cout << "Forwarded IPv4 packet to " << IPv4::ipToString(dest)
                       << " via interface " << outIfindex << std::endl;
         }
         return;
@@ -101,8 +104,7 @@ void IpForwarder::forwardPacket(const IPv4Packet& packet)
     else
     {
         std::cout << "Drop IPv4: ARP resolution queue full for "
-                  << (int)arpTarget[0] << "." << (int)arpTarget[1] << "."
-                  << (int)arpTarget[2] << "." << (int)arpTarget[3] << std::endl;
+                  << IPv4::ipToString(arpTarget) << std::endl;
         return;
     }
 

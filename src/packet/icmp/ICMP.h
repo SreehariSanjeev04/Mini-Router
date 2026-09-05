@@ -27,6 +27,13 @@ namespace ICMP {
         uint16_t sequence;
     };
 
+    struct ICMPErrorHeader {
+        uint8_t type;
+        uint8_t code;
+        uint8_t checksum;
+        uint32_t data;
+    };
+
     /**
      * Parses an ICMP echo request from a buffer.
      * @param data Pointer to the ICMP message (the IPv4 payload).
@@ -68,6 +75,13 @@ namespace ICMP {
     uint16_t calculateChecksum(
         const uint8_t* data,
         size_t length);
+
+    bool createICMPErrorReply(
+    const IPv4Packet& packet,
+    size_t IPv4HeaderLength,
+    const uint8_t& icmp_code,
+    const uint8_t& icmp_type,
+    uint8_t* buffer);
 
 } // namespace ICMP
 

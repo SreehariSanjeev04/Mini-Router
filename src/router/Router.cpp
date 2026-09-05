@@ -9,6 +9,7 @@
 #include <cstring>
 #include <iostream>
 #include <memory>
+#include <arpa/inet.h>
 #include <net/ethernet.h>
 #include <poll.h>
 #include <utility>
@@ -145,11 +146,11 @@ void Router::run()
                     std::cout << "Received IPv4 packet" << std::endl;
                     IPv4Packet ipv4Packet;
                     if (IPv4::parse(buffer + sizeof(Ethernet::EthernetHeader), numBytes - sizeof(Ethernet::EthernetHeader), ipv4Packet) &&
-                        IPv4::verifyChecksum(buffer + sizeof(Ethernet::EthernetHeader), ipv4Packet.headerLength * 4))
+                        IPv4::verifyChecksum(buffer + sizeof(Ethernet::EthernetHeader), IPv4::headerLengthBytes(ipv4Packet)))
                     {
                         IPv4::printPacket(ipv4Packet);
 
-                        std::array<uint8_t, 4> destIp = ipv4Packet.destinationAddress.bytes;
+                        std::array<uint8_t, 4> destIp = IPv4::destinationAddress(ipv4Packet);
                         if (interfaces_.isRouterIp(destIp))
                         {
                             if (!handleLocalDelivery(ipv4Packet, ethHeader.source, socket))
@@ -193,9 +194,9 @@ bool Router::handleLocalDelivery(
     const Ethernet::MacAddress& senderMac,
     RawSocket& io)
 {
-    if (packet.protocol != static_cast<uint8_t>(Net::IPv4::Protocol::ICMP))
+    if (packet.header.protocol != static_cast<uint8_t>(Net::IPv4::Protocol::ICMP))
     {
-        std::cout << "Drop: unsupported protocol " << (int)packet.protocol << " destined to router" << std::endl;
+        std::cout << "Drop: unsupported protocol " << (int)packet.header.protocol << " destined to router" << std::endl;
         return false;
     }
 
@@ -217,29 +218,27 @@ bool Router::handleLocalDelivery(
     }
 
     // Build the IPv4 header for the reply (swap source/destination).
-    IPv4Packet replyPacket;
-    replyPacket.version = 4;
-    replyPacket.headerLength = 5;
-    replyPacket.tos = 0;
-    replyPacket.totalLength = 20 + static_cast<uint16_t>(icmpLength);
-    replyPacket.identification = 0;
-    replyPacket.flags = 0;
-    replyPacket.fragmentOffset = 0;
-    replyPacket.ttl = 64;
-    replyPacket.protocol = static_cast<uint8_t>(Net::IPv4::Protocol::ICMP);
-    replyPacket.headerChecksum = 0;
-    replyPacket.sourceAddress = packet.destinationAddress;
-    replyPacket.destinationAddress = packet.sourceAddress;
+    IPv4Packet replyPacket{};
+    replyPacket.header.versionAndIHL = (4 << 4) | 5;
+    replyPacket.header.tos = 0;
+    replyPacket.header.totalLength = htons(static_cast<uint16_t>(20 + icmpLength));
+    replyPacket.header.identification = 0;
+    replyPacket.header.flagsAndFragmentOffset = 0;
+    replyPacket.header.ttl = 64;
+    replyPacket.header.protocol = static_cast<uint8_t>(Net::IPv4::Protocol::ICMP);
+    replyPacket.header.checksum = 0;
+    replyPacket.header.source = packet.header.destination;
+    replyPacket.header.destination = packet.header.source;
     replyPacket.payload = icmpBuffer;
     replyPacket.payloadLength = icmpLength;
 
-    std::vector<uint8_t> ipv4Buffer(replyPacket.totalLength);
+    std::vector<uint8_t> ipv4Buffer(IPv4::totalLength(replyPacket));
     if (!IPv4::serialize(replyPacket, ipv4Buffer.data(), ipv4Buffer.size()))
     {
         std::cout << "Drop: failed to serialize IPv4 reply" << std::endl;
         return false;
     }
-    IPv4::updateChecksum(ipv4Buffer.data(), replyPacket.headerLength * 4);
+    IPv4::updateChecksum(ipv4Buffer.data(), IPv4::headerLengthBytes(replyPacket));
 
     // Wrap in an Ethernet frame addressed back to the request's sender.
     std::array<uint8_t, 6> localMac;
@@ -271,7 +270,6 @@ bool Router::handleLocalDelivery(
     }
 
     std::cout << "Sent ICMP echo reply to "
-              << (int)packet.sourceAddress.bytes[0] << "." << (int)packet.sourceAddress.bytes[1] << "."
-              << (int)packet.sourceAddress.bytes[2] << "." << (int)packet.sourceAddress.bytes[3] << std::endl;
+              << IPv4::ipToString(IPv4::sourceAddress(packet)) << std::endl;
     return true;
 }
